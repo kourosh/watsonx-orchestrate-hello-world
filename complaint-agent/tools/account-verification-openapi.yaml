@@ -1,0 +1,165 @@
+openapi: 3.0.0
+info:
+  title: Mock CRM Account Verification API
+  description: API for verifying customer account information
+  version: 1.0.0
+servers:
+  - url: https://YOUR_CODE_ENGINE_URL
+    description: IBM Cloud Code Engine deployment
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /api/v1/accounts/{account_number}:
+    get:
+      summary: Get account details
+      description: Retrieve full account information for verification
+      operationId: getAccountDetails
+      parameters:
+        - name: account_number
+          in: path
+          required: true
+          description: Customer account number (8-12 alphanumeric characters)
+          schema:
+            type: string
+            pattern: '^[A-Z0-9]{8,12}$'
+            example: ACC12345678
+      responses:
+        '200':
+          description: Account found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_number:
+                    type: string
+                    example: ACC12345678
+                  full_name:
+                    type: string
+                    example: John Smith
+                  email:
+                    type: string
+                    format: email
+                    example: john.smith@email.com
+                  phone:
+                    type: string
+                    example: +1-555-0101
+                  status:
+                    type: string
+                    enum: [active, suspended, closed]
+                    example: active
+                  created_date:
+                    type: string
+                    format: date
+                    example: '2023-01-15'
+                  account_type:
+                    type: string
+                    enum: [premium, standard]
+                    example: premium
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Account not found
+                  account_number:
+                    type: string
+                    example: ACC99999999
+
+  /api/v1/accounts/{account_number}/verify:
+    get:
+      summary: Verify account exists
+      description: Quick verification if an account number exists
+      operationId: verifyAccount
+      parameters:
+        - name: account_number
+          in: path
+          required: true
+          description: Customer account number
+          schema:
+            type: string
+            pattern: '^[A-Z0-9]{8,12}$'
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_exists:
+                    type: boolean
+                    example: true
+                  account_status:
+                    type: string
+                    example: active
+                  account_type:
+                    type: string
+                    example: premium
+                  customer_id:
+                    type: string
+                    example: ACC12345678
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_exists:
+                    type: boolean
+                    example: false
+                  account_status:
+                    type: string
+                    example: not_found
+
+  /health:
+    get:
+      summary: Health check
+      description: Check if the API is running
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  customers_count:
+                    type: integer
+                    example: 10
+
+components:
+  schemas:
+    Account:
+      type: object
+      properties:
+        account_number:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended, closed]
+        created_date:
+          type: string
+          format: date
+        account_type:
+          type: string
+          enum: [premium, standard]
+
+# Made with Bob
