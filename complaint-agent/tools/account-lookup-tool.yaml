@@ -1,0 +1,153 @@
+name: Account Lookup Tool
+description: Tool for verifying and retrieving customer account information
+version: 1.0.0
+
+tool:
+  id: account_lookup
+  type: api_integration
+  
+  # API Configuration
+  api:
+    base_url: "${env.ACCOUNT_SERVICE_URL}"
+    authentication:
+      type: oauth2
+      token_url: "${env.AUTH_TOKEN_URL}"
+      client_id: "${env.CLIENT_ID}"
+      client_secret: "${env.CLIENT_SECRET}"
+    
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+  
+  # Operations
+  operations:
+    - name: verify_account
+      description: Verify if an account exists and is active
+      method: GET
+      endpoint: /api/v1/accounts/{account_number}/verify
+      
+      parameters:
+        - name: account_number
+          type: string
+          required: true
+          location: path
+          description: Customer account number
+      
+      response:
+        success:
+          status_code: 200
+          schema:
+            account_exists: boolean
+            account_status: string  # active, suspended, closed
+            account_type: string
+            customer_id: string
+        
+        error:
+          status_code: 404
+          message: "Account not found"
+    
+    - name: get_account_details
+      description: Retrieve detailed account information
+      method: GET
+      endpoint: /api/v1/accounts/{account_number}
+      
+      parameters:
+        - name: account_number
+          type: string
+          required: true
+          location: path
+      
+      response:
+        success:
+          status_code: 200
+          schema:
+            account_number: string
+            customer_name: string
+            email: string
+            phone: string
+            account_status: string
+            account_type: string
+            created_date: date
+            last_activity: datetime
+            billing_address: object
+            service_plan: string
+        
+        error:
+          status_code: 404
+          message: "Account not found"
+    
+    - name: get_account_history
+      description: Retrieve account interaction history
+      method: GET
+      endpoint: /api/v1/accounts/{account_number}/history
+      
+      parameters:
+        - name: account_number
+          type: string
+          required: true
+          location: path
+        
+        - name: limit
+          type: integer
+          required: false
+          default: 10
+          location: query
+        
+        - name: type
+          type: string
+          required: false
+          location: query
+          enum: [complaint, inquiry, purchase, support]
+      
+      response:
+        success:
+          status_code: 200
+          schema:
+            history:
+              type: array
+              items:
+                interaction_id: string
+                type: string
+                date: datetime
+                summary: string
+                status: string
+                resolution: string
+  
+  # Error Handling
+  error_handling:
+    retry_policy:
+      max_retries: 3
+      retry_delay: 1000  # milliseconds
+      backoff_multiplier: 2
+    
+    timeout: 5000  # milliseconds
+    
+    error_responses:
+      - status_code: 401
+        action: refresh_token
+        message: "Authentication failed, refreshing token"
+      
+      - status_code: 429
+        action: retry_with_backoff
+        message: "Rate limit exceeded, retrying"
+      
+      - status_code: 500
+        action: log_and_escalate
+        message: "Service unavailable, escalating to human agent"
+  
+  # Caching
+  caching:
+    enabled: true
+    ttl: 300  # 5 minutes
+    cache_key_pattern: "account:{account_number}"
+  
+  # Monitoring
+  monitoring:
+    log_requests: true
+    log_responses: true
+    track_metrics:
+      - response_time
+      - success_rate
+      - error_rate
+
+# Made with Bob

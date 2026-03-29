@@ -1,0 +1,333 @@
+name: Complaint Handling Flow
+description: Orchestrated flow for handling customer complaints from greeting to resolution
+version: 1.0.0
+
+flow:
+  id: complaint-handling-flow
+  trigger: customer_interaction_start
+  
+  states:
+    # State 1: Initial Greeting
+    - id: greeting
+      type: conversational
+      entry_action:
+        type: message
+        content: |
+          Hello! Thank you for contacting us today. I'm here to help you with any concerns. 
+          Before we begin, I'll need to collect some information to better assist you.
+      transitions:
+        - target: collect_account_number
+          condition: always
+    
+    # State 2: Collect Account Number
+    - id: collect_account_number
+      type: input_collection
+      prompt: "May I have your account number, please? It should be 8-12 characters."
+      input:
+        field: account_number
+        type: string
+        validation:
+          pattern: "^[A-Z0-9]{8,12}$"
+          error_message: "Please provide a valid account number (8-12 alphanumeric characters)"
+        max_retries: 3
+      transitions:
+        - target: verify_account
+          condition: input_valid
+        - target: account_lookup_failed
+          condition: max_retries_reached
+    
+    # State 3: Verify Account
+    - id: verify_account
+      type: api_call
+      action:
+        service: account_lookup
+        method: verify_account
+        parameters:
+          account_number: "${flow.account_number}"
+      transitions:
+        - target: collect_customer_name
+          condition: account_found
+        - target: account_not_found
+          condition: account_not_found
+    
+    # State 4: Collect Customer Name
+    - id: collect_customer_name
+      type: input_collection
+      prompt: "Thank you. Could you please provide your full name as it appears on the account?"
+      input:
+        field: customer_name
+        type: string
+        required: true
+      transitions:
+        - target: collect_contact_email
+          condition: input_provided
+    
+    # State 5: Collect Contact Email
+    - id: collect_contact_email
+      type: input_collection
+      prompt: "What email address should we use to contact you regarding this matter?"
+      input:
+        field: contact_email
+        type: email
+        validation:
+          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          error_message: "Please provide a valid email address"
+        required: true
+      transitions:
+        - target: collect_contact_phone
+          condition: input_valid
+    
+    # State 6: Collect Contact Phone (Optional)
+    - id: collect_contact_phone
+      type: input_collection
+      prompt: "Would you also like to provide a phone number? (Optional - press Enter to skip)"
+      input:
+        field: contact_phone
+        type: phone
+        required: false
+      transitions:
+        - target: account_info_summary
+          condition: always
+    
+    # State 7: Account Info Summary
+    - id: account_info_summary
+      type: conversational
+      entry_action:
+        type: message
+        content: |
+          Thank you, ${flow.customer_name}. I have your information:
+          - Account: ${flow.account_number}
+          - Email: ${flow.contact_email}
+          ${flow.contact_phone ? '- Phone: ' + flow.contact_phone : ''}
+          
+          Now, please tell me about the issue you're experiencing. Take your time and provide as much detail as you'd like.
+      transitions:
+        - target: collect_complaint
+          condition: always
+    
+    # State 8: Collect Complaint
+    - id: collect_complaint
+      type: input_collection
+      prompt: "I'm listening. Please describe your complaint or concern."
+      input:
+        field: complaint_description
+        type: text
+        required: true
+        min_length: 10
+      transitions:
+        - target: ask_for_more_details
+          condition: input_provided
+    
+    # State 9: Ask for More Details
+    - id: ask_for_more_details
+      type: conversational
+      entry_action:
+        type: message
+        content: |
+          I understand. To help you better, could you please provide:
+          - When did this issue first occur?
+          - Have you experienced this before?
+          - What steps, if any, have you already taken to resolve it?
+      transitions:
+        - target: collect_additional_details
+          condition: always
+    
+    # State 10: Collect Additional Details
+    - id: collect_additional_details
+      type: input_collection
+      input:
+        field: additional_details
+        type: text
+        required: false
+      transitions:
+        - target: analyze_complaint
+          condition: always
+    
+    # State 11: Analyze and Categorize Complaint
+    - id: analyze_complaint
+      type: ai_processing
+      action:
+        type: classification
+        model: watsonx.ai/ibm/granite-13b-chat-v2
+        input: "${flow.complaint_description} ${flow.additional_details}"
+        categories:
+          - billing_issue
+          - service_outage
+          - product_defect
+          - account_access
+          - technical_support
+          - general_inquiry
+          - other
+        extract_entities:
+          - complaint_severity: [low, medium, high, critical]
+          - affected_service: string
+          - date_occurred: date
+      output:
+        complaint_category: category
+        complaint_severity: severity
+        key_entities: entities
+      transitions:
+        - target: search_knowledge_base
+          condition: always
+    
+    # State 12: Search Knowledge Base
+    - id: search_knowledge_base
+      type: search
+      action:
+        source: knowledge_base
+        query: "${flow.complaint_category} ${flow.complaint_description}"
+        max_results: 3
+      output:
+        relevant_solutions: results
+      transitions:
+        - target: create_ticket
+          condition: always
+    
+    # State 13: Create Support Ticket
+    - id: create_ticket
+      type: api_call
+      action:
+        service: ticket_system
+        method: create_ticket
+        parameters:
+          account_number: "${flow.account_number}"
+          customer_name: "${flow.customer_name}"
+          contact_email: "${flow.contact_email}"
+          contact_phone: "${flow.contact_phone}"
+          category: "${flow.complaint_category}"
+          severity: "${flow.complaint_severity}"
+          description: "${flow.complaint_description}"
+          additional_details: "${flow.additional_details}"
+          timestamp: "${now()}"
+      output:
+        ticket_id: ticket_id
+        estimated_resolution: estimated_time
+      transitions:
+        - target: provide_summary_and_next_steps
+          condition: ticket_created
+        - target: ticket_creation_failed
+          condition: error
+    
+    # State 14: Provide Summary and Next Steps
+    - id: provide_summary_and_next_steps
+      type: conversational
+      entry_action:
+        type: message
+        content: |
+          Thank you for providing all this information, ${flow.customer_name}. 
+          
+          Here's a summary of your complaint:
+          - Category: ${flow.complaint_category}
+          - Severity: ${flow.complaint_severity}
+          - Ticket ID: ${flow.ticket_id}
+          
+          ${flow.relevant_solutions.length > 0 ? 'Based on similar cases, here are some potential solutions:\n' + flow.relevant_solutions.map((s, i) => (i+1) + '. ' + s.title).join('\n') : ''}
+          
+          What happens next:
+          1. Your complaint has been logged and assigned to our specialized team
+          2. You'll receive a confirmation email at ${flow.contact_email} within 15 minutes
+          3. Our team will review your case and contact you within ${flow.estimated_resolution}
+          4. You can track your ticket status using ID: ${flow.ticket_id}
+          
+          Is there anything else I can help you with today?
+      transitions:
+        - target: ask_additional_help
+          condition: always
+    
+    # State 15: Ask for Additional Help
+    - id: ask_additional_help
+      type: input_collection
+      prompt: "Do you have any other questions or concerns? (yes/no)"
+      input:
+        field: needs_more_help
+        type: boolean
+      transitions:
+        - target: collect_complaint
+          condition: needs_more_help == true
+        - target: closing
+          condition: needs_more_help == false
+    
+    # State 16: Closing
+    - id: closing
+      type: conversational
+      entry_action:
+        type: message
+        content: |
+          Thank you for contacting us today, ${flow.customer_name}. We appreciate your patience and 
+          will work diligently to resolve your issue. You'll hear from us soon.
+          
+          Have a great day!
+      transitions:
+        - target: end
+          condition: always
+    
+    # Error States
+    - id: account_not_found
+      type: conversational
+      entry_action:
+        type: message
+        content: "I'm sorry, but I couldn't find an account with that number. Let me transfer you to our account services team who can help verify your account."
+      transitions:
+        - target: escalate_to_human
+          condition: always
+    
+    - id: account_lookup_failed
+      type: conversational
+      entry_action:
+        type: message
+        content: "I'm having trouble verifying your account. Let me connect you with a specialist who can assist you better."
+      transitions:
+        - target: escalate_to_human
+          condition: always
+    
+    - id: ticket_creation_failed
+      type: conversational
+      entry_action:
+        type: message
+        content: "I apologize, but I'm experiencing a technical issue creating your ticket. Let me transfer you to a live agent who can help you immediately."
+      transitions:
+        - target: escalate_to_human
+          condition: always
+    
+    - id: escalate_to_human
+      type: handoff
+      action:
+        type: transfer
+        target: human_agent
+        context: "${flow}"
+      transitions:
+        - target: end
+          condition: always
+    
+    # End State
+    - id: end
+      type: final
+      entry_action:
+        type: log
+        message: "Conversation completed. Ticket: ${flow.ticket_id}"
+
+# Flow Configuration
+configuration:
+  timeout: 1800  # 30 minutes
+  max_turns: 50
+  enable_interruption: true
+  save_conversation: true
+  
+  # Sentiment Analysis
+  sentiment_monitoring:
+    enabled: true
+    check_frequency: every_turn
+    escalate_on_negative: true
+    negative_threshold: -0.6
+  
+  # Context Preservation
+  context:
+    persist_fields:
+      - account_number
+      - customer_name
+      - contact_email
+      - contact_phone
+      - ticket_id
+      - complaint_category
+
+# Made with Bob

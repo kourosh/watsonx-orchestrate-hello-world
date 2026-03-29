@@ -1,0 +1,427 @@
+name: Ticket System Tool
+description: Tool for creating and managing customer complaint tickets
+version: 1.0.0
+
+tool:
+  id: ticket_system
+  type: api_integration
+  
+  # API Configuration
+  api:
+    base_url: "${env.TICKET_SERVICE_URL}"
+    authentication:
+      type: api_key
+      header_name: X-API-Key
+      api_key: "${env.TICKET_API_KEY}"
+    
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+  
+  # Operations
+  operations:
+    - name: create_ticket
+      description: Create a new support ticket for a customer complaint
+      method: POST
+      endpoint: /api/v1/tickets
+      
+      parameters:
+        - name: account_number
+          type: string
+          required: true
+          location: body
+          description: Customer account number
+        
+        - name: customer_name
+          type: string
+          required: true
+          location: body
+        
+        - name: contact_email
+          type: string
+          required: true
+          location: body
+          validation: email
+        
+        - name: contact_phone
+          type: string
+          required: false
+          location: body
+        
+        - name: category
+          type: string
+          required: true
+          location: body
+          enum: 
+            - billing_issue
+            - service_outage
+            - product_defect
+            - account_access
+            - technical_support
+            - general_inquiry
+            - other
+        
+        - name: severity
+          type: string
+          required: true
+          location: body
+          enum: [low, medium, high, critical]
+          default: medium
+        
+        - name: description
+          type: string
+          required: true
+          location: body
+          min_length: 10
+          max_length: 5000
+        
+        - name: additional_details
+          type: string
+          required: false
+          location: body
+        
+        - name: timestamp
+          type: datetime
+          required: true
+          location: body
+        
+        - name: source
+          type: string
+          required: false
+          location: body
+          default: "orchestrate_agent"
+        
+        - name: tags
+          type: array
+          required: false
+          location: body
+          items:
+            type: string
+      
+      response:
+        success:
+          status_code: 201
+          schema:
+            ticket_id: string
+            ticket_number: string
+            status: string  # open, in_progress, resolved, closed
+            priority: string
+            assigned_to: string
+            estimated_resolution: string
+            created_at: datetime
+            sla_deadline: datetime
+        
+        error:
+          status_code: 400
+          message: "Invalid ticket data"
+    
+    - name: get_ticket
+      description: Retrieve ticket details by ID
+      method: GET
+      endpoint: /api/v1/tickets/{ticket_id}
+      
+      parameters:
+        - name: ticket_id
+          type: string
+          required: true
+          location: path
+      
+      response:
+        success:
+          status_code: 200
+          schema:
+            ticket_id: string
+            ticket_number: string
+            account_number: string
+            customer_name: string
+            category: string
+            severity: string
+            status: string
+            description: string
+            created_at: datetime
+            updated_at: datetime
+            assigned_to: string
+            resolution: string
+            notes: array
+            attachments: array
+    
+    - name: update_ticket
+      description: Update ticket information
+      method: PATCH
+      endpoint: /api/v1/tickets/{ticket_id}
+      
+      parameters:
+        - name: ticket_id
+          type: string
+          required: true
+          location: path
+        
+        - name: status
+          type: string
+          required: false
+          location: body
+          enum: [open, in_progress, pending_customer, resolved, closed]
+        
+        - name: priority
+          type: string
+          required: false
+          location: body
+          enum: [low, medium, high, critical]
+        
+        - name: assigned_to
+          type: string
+          required: false
+          location: body
+        
+        - name: notes
+          type: string
+          required: false
+          location: body
+      
+      response:
+        success:
+          status_code: 200
+          schema:
+            ticket_id: string
+            updated_fields: array
+            updated_at: datetime
+    
+    - name: add_ticket_note
+      description: Add a note or comment to a ticket
+      method: POST
+      endpoint: /api/v1/tickets/{ticket_id}/notes
+      
+      parameters:
+        - name: ticket_id
+          type: string
+          required: true
+          location: path
+        
+        - name: note
+          type: string
+          required: true
+          location: body
+        
+        - name: author
+          type: string
+          required: true
+          location: body
+        
+        - name: visibility
+          type: string
+          required: false
+          location: body
+          enum: [internal, customer]
+          default: internal
+      
+      response:
+        success:
+          status_code: 201
+          schema:
+            note_id: string
+            created_at: datetime
+    
+    - name: search_tickets
+      description: Search for tickets by various criteria
+      method: GET
+      endpoint: /api/v1/tickets/search
+      
+      parameters:
+        - name: account_number
+          type: string
+          required: false
+          location: query
+        
+        - name: category
+          type: string
+          required: false
+          location: query
+        
+        - name: status
+          type: string
+          required: false
+          location: query
+        
+        - name: date_from
+          type: date
+          required: false
+          location: query
+        
+        - name: date_to
+          type: date
+          required: false
+          location: query
+        
+        - name: limit
+          type: integer
+          required: false
+          location: query
+          default: 20
+          max: 100
+      
+      response:
+        success:
+          status_code: 200
+          schema:
+            tickets:
+              type: array
+              items:
+                ticket_id: string
+                ticket_number: string
+                category: string
+                status: string
+                created_at: datetime
+            total_count: integer
+            page: integer
+    
+    - name: get_ticket_statistics
+      description: Get statistics for tickets by account
+      method: GET
+      endpoint: /api/v1/tickets/statistics
+      
+      parameters:
+        - name: account_number
+          type: string
+          required: true
+          location: query
+        
+        - name: period
+          type: string
+          required: false
+          location: query
+          enum: [week, month, quarter, year]
+          default: month
+      
+      response:
+        success:
+          status_code: 200
+          schema:
+            total_tickets: integer
+            open_tickets: integer
+            resolved_tickets: integer
+            average_resolution_time: string
+            by_category: object
+            by_severity: object
+  
+  # Business Rules
+  business_rules:
+    auto_assignment:
+      enabled: true
+      rules:
+        - condition: category == "billing_issue"
+          assign_to: billing_team
+        
+        - condition: category == "technical_support"
+          assign_to: tech_support_team
+        
+        - condition: severity == "critical"
+          assign_to: senior_support_team
+          notify: [manager, team_lead]
+    
+    sla_rules:
+      - severity: critical
+        response_time: 1h
+        resolution_time: 4h
+      
+      - severity: high
+        response_time: 4h
+        resolution_time: 24h
+      
+      - severity: medium
+        response_time: 8h
+        resolution_time: 48h
+      
+      - severity: low
+        response_time: 24h
+        resolution_time: 5d
+    
+    escalation_rules:
+      - condition: time_open > sla_deadline
+        action: escalate_to_manager
+        notify: true
+      
+      - condition: customer_sentiment < -0.7
+        action: escalate_to_senior_agent
+        priority: high
+      
+      - condition: repeat_complaint == true
+        action: assign_to_specialist
+        add_tag: repeat_customer
+  
+  # Notifications
+  notifications:
+    email:
+      enabled: true
+      templates:
+        ticket_created:
+          subject: "Ticket #{ticket_number} Created - We're on it!"
+          recipients: [customer]
+        
+        ticket_updated:
+          subject: "Update on Ticket #{ticket_number}"
+          recipients: [customer]
+        
+        ticket_resolved:
+          subject: "Ticket #{ticket_number} Resolved"
+          recipients: [customer]
+    
+    sms:
+      enabled: false
+      conditions:
+        - severity == "critical"
+        - customer_preference == "sms"
+  
+  # Error Handling
+  error_handling:
+    retry_policy:
+      max_retries: 3
+      retry_delay: 2000
+      backoff_multiplier: 2
+    
+    timeout: 10000
+    
+    error_responses:
+      - status_code: 400
+        action: validate_and_retry
+        message: "Invalid ticket data, please check required fields"
+      
+      - status_code: 409
+        action: check_duplicate
+        message: "Possible duplicate ticket detected"
+      
+      - status_code: 503
+        action: queue_for_later
+        message: "Service temporarily unavailable, ticket will be created when service is restored"
+  
+  # Data Validation
+  validation:
+    required_fields:
+      - account_number
+      - customer_name
+      - contact_email
+      - category
+      - description
+    
+    field_constraints:
+      description:
+        min_length: 10
+        max_length: 5000
+      
+      contact_email:
+        pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      
+      account_number:
+        pattern: "^[A-Z0-9]{8,12}$"
+  
+  # Monitoring
+  monitoring:
+    log_requests: true
+    log_responses: true
+    track_metrics:
+      - ticket_creation_time
+      - ticket_resolution_time
+      - customer_satisfaction_score
+      - escalation_rate
+      - sla_compliance_rate
+
+# Made with Bob
