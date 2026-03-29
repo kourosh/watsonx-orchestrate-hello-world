@@ -1,0 +1,94 @@
+{
+  "customers": [
+    {
+      "account_number": "ACC12345678",
+      "full_name": "John Smith",
+      "email": "john.smith@email.com",
+      "phone": "+1-555-0101",
+      "status": "active",
+      "created_date": "2023-01-15",
+      "account_type": "premium"
+    },
+    {
+      "account_number": "ACC23456789",
+      "full_name": "Sarah Johnson",
+      "email": "sarah.johnson@email.com",
+      "phone": "+1-555-0102",
+      "status": "active",
+      "created_date": "2023-02-20",
+      "account_type": "standard"
+    },
+    {
+      "account_number": "ACC34567890",
+      "full_name": "Michael Chen",
+      "email": "michael.chen@email.com",
+      "phone": "+1-555-0103",
+      "status": "active",
+      "created_date": "2023-03-10",
+      "account_type": "premium"
+    },
+    {
+      "account_number": "ACC45678901",
+      "full_name": "Emily Davis",
+      "email": "emily.davis@email.com",
+      "phone": "+1-555-0104",
+      "status": "active",
+      "created_date": "2023-04-05",
+      "account_type": "standard"
+    },
+    {
+      "account_number": "ACC56789012",
+      "full_name": "Robert Martinez",
+      "email": "robert.martinez@email.com",
+      "phone": "+1-555-0105",
+      "status": "active",
+      "created_date": "2023-05-12",
+      "account_type": "premium"
+    },
+    {
+      "account_number": "ACC67890123",
+      "full_name": "Jennifer Wilson",
+      "email": "jennifer.wilson@email.com",
+      "phone": "+1-555-0106",
+      "status": "active",
+      "created_date": "2023-06-18",
+      "account_type": "standard"
+    },
+    {
+      "account_number": "ACC78901234",
+      "full_name": "David Brown",
+      "email": "david.brown@email.com",
+      "phone": "+1-555-0107",
+      "status": "active",
+      "created_date": "2023-07-22",
+      "account_type": "premium"
+    },
+    {
+      "account_number": "ACC89012345",
+      "full_name": "Lisa Anderson",
+      "email": "lisa.anderson@email.com",
+      "phone": "+1-555-0108",
+      "status": "active",
+      "created_date": "2023-08-30",
+      "account_type": "standard"
+    },
+    {
+      "account_number": "ACC90123456",
+      "full_name": "James Taylor",
+      "email": "james.taylor@email.com",
+      "phone": "+1-555-0109",
+      "status": "active",
+      "created_date": "2023-09-14",
+      "account_type": "premium"
+    },
+    {
+      "account_number": "ACC01234567",
+      "full_name": "Maria Garcia",
+      "email": "maria.garcia@email.com",
+      "phone": "+1-555-0110",
+      "status": "active",
+      "created_date": "2023-10-25",
+      "account_type": "standard"
+    }
+  ]
+}
