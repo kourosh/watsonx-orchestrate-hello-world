@@ -48,6 +48,17 @@ fi
 echo -e "${GREEN}✓ Logged in to IBM Cloud${NC}"
 echo ""
 
+# Check if resource group is targeted
+if ! ibmcloud target | grep -q "Resource group:"; then
+    echo -e "${YELLOW}No resource group targeted. Listing available resource groups...${NC}"
+    ibmcloud resource groups
+    echo ""
+    read -p "Enter resource group name (default: Default): " RESOURCE_GROUP
+    RESOURCE_GROUP=${RESOURCE_GROUP:-Default}
+    echo "Targeting resource group: $RESOURCE_GROUP"
+    ibmcloud target -g "$RESOURCE_GROUP"
+fi
+
 # Show current target
 echo "Current target:"
 ibmcloud target
