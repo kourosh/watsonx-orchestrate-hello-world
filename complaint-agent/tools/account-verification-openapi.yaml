@@ -4,10 +4,8 @@ info:
   description: API for verifying customer account information
   version: 1.0.0
 servers:
-  - url: https://YOUR_CODE_ENGINE_URL
+  - url: https://mock-crm-api.28307ltn2zc8.us-south.codeengine.appdomain.cloud
     description: IBM Cloud Code Engine deployment
-  - url: http://localhost:8080
-    description: Local development server
 
 paths:
   /api/v1/accounts/{account_number}:
